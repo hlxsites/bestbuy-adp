@@ -1,0 +1,10 @@
+.stats-wrapper {
+    grid-area: stats;
+    padding-left: var(--assets-browser-padding);
+    padding-right: var(--assets-browser-padding);
+}
+
+.stats {
+    font-size: var(--header-font-size);
+    word-break: keep-all;
+}

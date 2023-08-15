@@ -12,8 +12,16 @@ import {
   loadBlocks,
   loadCSS,
 } from './lib-franklin.js';
+// eslint-disable-next-line import/no-cycle
+import { getBearerToken } from './security.js';
+import { getAlgoliaIndex, getBackendApiKey, getDeliveryEnvironment } from './polaris.js';
 
 const LCP_BLOCKS = []; // add your LCP blocks to the list
+
+const algoliaCSS = [
+  { href: '/scripts/libs/instantsearch.js/themes/reset-min.css', integrity: 'sha256-2AeJLzExpZvqLUxMfcs+4DWcMwNfpnjUeAAvEtPr0wU=', crossOrigin: 'anonymous' },
+  { href: '/scripts/libs/instantsearch.js/themes/satellite-min.css', integrity: 'sha256-p/rGN4RGy6EDumyxF9t7LKxWGg6/MZfGhJM/asKkqvA=', crossOrigin: 'anonymous' },
+];
 
 /**
  * Builds hero block and prepends to main in a new section.
@@ -27,18 +35,6 @@ function buildHeroBlock(main) {
     const section = document.createElement('div');
     section.append(buildBlock('hero', { elems: [picture, h1] }));
     main.prepend(section);
-  }
-}
-
-/**
- * load fonts.css and set a session storage flag
- */
-async function loadFonts() {
-  await loadCSS(`${window.hlx.codeBasePath}/styles/fonts.css`);
-  try {
-    if (!window.location.hostname.includes('localhost')) sessionStorage.setItem('fonts-loaded', 'true');
-  } catch (e) {
-    // do nothing
   }
 }
 
@@ -70,27 +66,149 @@ export function decorateMain(main) {
 }
 
 /**
+ * Gets fetch site configurations object.
+ * @returns {object} Window site configurations object
+ */
+export async function fetchSiteConfigurations() {
+  window.siteConfigurations = window.siteConfigurations || {};
+
+  async function fetchConfig() {
+    try {
+      const resp = await fetch(`${window.hlx.codeBasePath}/configurations.json`);
+      if (resp.ok) {
+        const json = await resp.json();
+        // eslint-disable-next-line prefer-destructuring
+        window.siteConfigurations = json.data[0];
+        return true;
+      }
+      return false;
+    } catch (error) {
+      window.siteConfigurations = {};
+      throw error;
+    }
+  }
+
+  if (!window.siteConfigsLoaded) {
+    window.siteConfigsLoaded = fetchConfig();
+  }
+  await window.siteConfigsLoaded;
+  return window.siteConfigurations;
+}
+
+async function applySiteBranding() {
+  const root = document.querySelector(':root');
+  const config = await fetchSiteConfigurations();
+
+  if (config.primaryColor) root.style.setProperty('--header-background-color', config.primaryColor);
+
+  if (config.secondaryColor) root.style.setProperty('--header-text-color', config.secondaryColor);
+
+  if (config.fontFamily) root.style.setProperty('--body-font-family', config.fontFamily);
+
+  // eslint-disable-next-line no-use-before-define
+  addFavIcon(config.favIcon);
+}
+
+export async function loadScript(url, attrs) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = url;
+    if (attrs) {
+      // eslint-disable-next-line no-restricted-syntax, guard-for-in
+      for (const attr in attrs) {
+        script.setAttribute(attr, attrs[attr]);
+      }
+    }
+
+    script.onload = () => resolve(script);
+    script.onerror = reject;
+
+    const head = document.querySelector('head');
+    head.append(script);
+  });
+}
+
+const backendSearchClient = {
+  async search(requests) {
+    const token = await getBearerToken();
+    return fetch(`${getDeliveryEnvironment()}/adobe/assets/search/algolia`, {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': getBackendApiKey(),
+        Authorization: token,
+      },
+      body: JSON.stringify({ requests }),
+    })
+      .then((res) => res.json())
+      .catch((e) => console.error('Unable to fetch results', e));
+  },
+};
+
+async function loadAlgolia() {
+  window.search = window.instantsearch({
+    indexName: getAlgoliaIndex(),
+    searchClient: backendSearchClient,
+  });
+}
+
+/**
  * Loads everything needed to get to LCP.
  * @param {Element} doc The container element
  */
 async function loadEager(doc) {
+  await getBearerToken();
+  await loadAlgolia();
   document.documentElement.lang = 'en';
   decorateTemplateAndTheme();
+  applySiteBranding();
   const main = doc.querySelector('main');
   if (main) {
     decorateMain(main);
     document.body.classList.add('appear');
     await waitForLCP(LCP_BLOCKS);
   }
+}
 
-  try {
-    /* if desktop (proxy for fast connection) or fonts already loaded, load fonts.css */
-    if (window.innerWidth >= 900 || sessionStorage.getItem('fonts-loaded')) {
-      loadFonts();
-    }
-  } catch (e) {
-    // do nothing
+/**
+ * Adds the favicon.
+ * @param {string} href The favicon URL
+ */
+export function addFavIcon(href) {
+  const link = document.createElement('link');
+  link.rel = 'icon';
+  link.type = 'image/svg+xml';
+  link.href = href;
+  const existingLink = document.querySelector('head link[rel="icon"]');
+  if (existingLink) {
+    existingLink.parentElement.replaceChild(link, existingLink);
+  } else {
+    document.getElementsByTagName('head')[0].appendChild(link);
   }
+}
+
+/**
+ * Load the Algolia CSS libs.
+ *
+ * @param {*} callback
+ */
+function loadAlgoliaCSS(callback) {
+  algoliaCSS.forEach((cssLib) => {
+    if (!document.querySelector(`head > link[href="${cssLib.href}"]`)) {
+      const link = document.createElement('link');
+      link.setAttribute('rel', 'stylesheet');
+      link.setAttribute('href', cssLib.href);
+      link.setAttribute('integrity', cssLib.integrity);
+      link.setAttribute('crossorigin', cssLib.crossOrigin);
+      if (typeof callback === 'function') {
+        link.onload = (e) => callback(e.type);
+        link.onerror = (e) => callback(e.type);
+      }
+      document.head.appendChild(link);
+    } else if (typeof callback === 'function') {
+      callback('noop');
+    }
+  });
 }
 
 /**
@@ -108,9 +226,10 @@ async function loadLazy(doc) {
   loadHeader(doc.querySelector('header'));
   loadFooter(doc.querySelector('footer'));
 
-  loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
-  loadFonts();
+  // load algolia styles
+  loadAlgoliaCSS();
 
+  loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
   sampleRUM('lazy');
   sampleRUM.observe(main.querySelectorAll('div[data-block-name]'));
   sampleRUM.observe(main.querySelectorAll('picture > img'));
@@ -132,4 +251,46 @@ async function loadPage() {
   loadDelayed();
 }
 
+export function isElement(element) {
+  return element instanceof Element || element instanceof Document;
+}
+
+/**
+ * Get the value of a query string parameter from the URL
+ * e.g. http://localhost:3000?assetId=1234
+ * @param {*} variable The name of the parameter to get the value of
+ * @returns The value of the parameter
+ */
+export function getQueryVariable(variable) {
+  const query = window.location.search.substring(1);
+  if(!query) return null;
+  const vars = query.split('&');
+  for (let i = 0; i < vars.length; i += 1) {
+    const pair = vars[i].split('=');
+    if (decodeURIComponent(pair[0]) === variable) {
+      return decodeURIComponent(pair[1]);
+    }
+  }
+  console.log('Query variable %s not found', variable);
+  return null;
+}
+
+export function getAnchorVariable(variable) {
+  const hash = window.location.hash.substring(1);
+  const vars = hash.split('&');
+  for (let i = 0; i < vars.length; i += 1) {
+    const pair = vars[i].split('=');
+    if (pair && pair[0] === variable) {
+      return pair[1];
+    }
+  }
+  return undefined;
+}
+
 loadPage();
+
+export function safeCSSId(str) {
+  return encodeURIComponent(str)
+    .toLowerCase()
+    .replace(/\.|%[0-9a-z]{2}/gi, '');
+}

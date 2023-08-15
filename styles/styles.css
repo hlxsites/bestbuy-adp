@@ -10,45 +10,62 @@
  * governing permissions and limitations under the License.
  */
 
- :root {
+:root {
   /* colors */
   --link-color: #035fe6;
   --link-hover-color: #136ff6;
-  --background-color: #fff;
+  --white-background-color: #fff;
+  --header-background-color: #EB1000;
   --overlay-background-color: #eee;
   --highlight-background-color: #ccc;
   --text-color: #000;
+  --header-text-color: white;
+  --label-color: #464646;
+  --assets-browser-background-color: #f8f8f8;
+  --asset-details-image-background-color: #e1e1e1;
+  --metadata-label-color: var(--label-color);
+  --metadata-tag-background-color: #fff;
+
+  --metadata-tag-text-color: #505050;
+
+  /* borders */
+  --assets-browser-selected-border-color: #5258e4;
+  --metadata-tag-border-color: #6d6d6d;
+  --metadata-tag-border: 1px solid var(--metadata-tag-border-color);
+  
+
+  /* spacing */
+  --assets-browser-padding: 1em;
+
+  /* buttons */
+  --button-hover-color: #e6e6e6;
+  --button-focus-color: #e6e6e6;
+  --button-focus-outline-color: #5258e4;
+  --button-focus-outline-offset: 2px;
+  --button-active-color: #d5d5d5;
 
   /* fonts */
-  --body-font-family: roboto, roboto-fallback;
+  --body-font-family: 'adobe clean', 'helvetica neue', helvetica, ubuntu, roboto, noto, sans-serif;
   --heading-font-family: var(--body-font-family);
   --fixed-font-family: 'Roboto Mono', menlo, consolas, 'Liberation Mono', monospace;
 
   /* body sizes */
+  --body-font-size-base: 12px;
   --body-font-size-m: 22px;
   --body-font-size-s: 18px;
   --body-font-size-xs: 16px;
+  --card-header-font-size: var(--body-font-size-base);
+  --metadata-font: normal normal normal 14px/17px Adobe Clean;
+  --metadata-label-font: var(--metadata-font);
+  --metadata-tags-font: normal normal normal 12px/15px Adobe Clean;
 
   /* heading sizes */
-  --heading-font-size-xxl: 48px;
-  --heading-font-size-xl: 40px;
-  --heading-font-size-l: 32px;
-  --heading-font-size-m: 24px;
+  --header-font-size: 14px;
   --heading-font-size-s: 20px;
-  --heading-font-size-xs: 18px;
 
   /* nav height */
   --nav-height: 64px;
-
 }
-
-@font-face {
-  font-family: roboto-fallback;
-  size-adjust: 100.06%;
-  ascent-override: 95%;
-  src: local('Arial');
-}
-
 
 @media (min-width: 900px) {
   :root {
@@ -65,9 +82,9 @@ body {
   font-size: var(--body-font-size-m);
   margin: 0;
   font-family: var(--body-font-family);
-  line-height: 1.6;
+  /*line-height: 1.6;*/
   color: var(--text-color);
-  background-color: var(--background-color);
+  background-color: var(--white-background-color);
   display: none;
 }
 
@@ -79,8 +96,12 @@ header {
   height: var(--nav-height);
 }
 
-h1, h2, h3,
-h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--heading-font-family);
   font-weight: 600;
   line-height: 1.25;
@@ -89,14 +110,36 @@ h4, h5, h6 {
   scroll-margin: calc(var(--nav-height) + 1em);
 }
 
-h1 { font-size: var(--heading-font-size-xxl) }
-h2 { font-size: var(--heading-font-size-xl) }
-h3 { font-size: var(--heading-font-size-l) }
-h4 { font-size: var(--heading-font-size-m) }
-h5 { font-size: var(--heading-font-size-s) }
-h6 { font-size: var(--heading-font-size-xs) }
+h1 {
+  font-size: var(--heading-font-size-xxl)
+}
 
-p, dl, ol, ul, pre, blockquote {
+h2 {
+  font-size: var(--heading-font-size-xl)
+}
+
+h3 {
+  font-size: var(--heading-font-size-l)
+}
+
+h4 {
+  font-size: var(--heading-font-size-m)
+}
+
+h5 {
+  font-size: var(--heading-font-size-s)
+}
+
+h6 {
+  font-size: var(--heading-font-size-xs)
+}
+
+p,
+dl,
+ol,
+ul,
+pre,
+blockquote {
   margin-top: 1em;
   margin-bottom: 1em;
 }
@@ -108,12 +151,15 @@ hr {
   border-bottom: 1px solid var(--overlay-background-color);
 }
 
-code, pre, samp {
+code,
+pre,
+samp {
   font-family: var(--fixed-font-family);
   font-size: var(--body-font-size-s);
 }
 
-code, samp {
+code,
+samp {
   padding: .125em;
 }
 
@@ -139,7 +185,7 @@ a:hover {
   color: var(--link-hover-color);
 }
 
-/* buttons */
+/* buttons
 a.button:any-link, button {
   font-family: var(--body-font-family);
   display: inline-block;
@@ -151,7 +197,7 @@ a.button:any-link, button {
   font-style: normal;
   font-weight: 600;
   cursor: pointer;
-  color: var(--background-color);
+  color: var(--white-background-color);
   background-color: var(--link-color);
   margin: 16px 0;
   white-space: nowrap;
@@ -187,12 +233,12 @@ main input {
   box-sizing: border-box;
   border: 1px solid var(--text-color);
   color: var(--text-color);
-  background-color: var(--background-color);
+  background-color: var(--white-background-color);
 }
 
 main input:hover {
   border: 1px solid var(--text-color);
-}
+}*/
 
 main blockquote {
   font-style: italic;
@@ -228,20 +274,20 @@ main img {
   width: 100%;
 }
 
+/*
 main .section {
-  padding: 64px 16px;
+  padding: 64px 16px 0;
 }
+*/
 
-@media (min-width: 600px) {
-  main .section {
-    padding: 64px 32px;
-  }
+main > .section {
+  padding: 0px 16px 0;
 }
 
 @media (min-width: 900px) {
   .section > div {
-    max-width: 1200px;
-    margin: auto;
+    /*max-width: 1200px;*/
+    /*margin: auto;*/
   }
 }
 
